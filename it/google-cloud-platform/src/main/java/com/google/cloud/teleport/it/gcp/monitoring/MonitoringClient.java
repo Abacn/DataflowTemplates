@@ -345,25 +345,36 @@ public final class MonitoringClient {
                 + "AND metric.labels.job_id=\"%s\" ",
             launchInfo.jobId());
     TimeInterval timeInterval = getTimeInterval(launchInfo.createTime());
-    Aggregation aggregation =
-        Aggregation.newBuilder()
-            .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
-            .setPerSeriesAligner(Aligner.ALIGN_MEAN)
-            .build();
-    ListTimeSeriesRequest request =
-        ListTimeSeriesRequest.newBuilder()
-            .setName(ProjectName.of(project).toString())
-            .setFilter(filter)
-            .setInterval(timeInterval)
-            .setAggregation(aggregation)
-            .build();
-    List<Double> timeSeries = listTimeSeriesAsDouble(request);
-    if (timeSeries.isEmpty()) {
-      LOG.warn("No monitoring data found. Unable to get elapsed time information.");
-      return null;
+
+    if ("DataflowRunner".equalsIgnoreCase(launchInfo.runner())) {
+      // For Dataflow runner, query elapsed time from Dataflow service
+      Aggregation aggregation =
+          Aggregation.newBuilder()
+              .setAlignmentPeriod(Duration.newBuilder().setSeconds(60).build())
+              .setPerSeriesAligner(Aligner.ALIGN_MEAN)
+              .build();
+      ListTimeSeriesRequest request =
+          ListTimeSeriesRequest.newBuilder()
+              .setName(ProjectName.of(project).toString())
+              .setFilter(filter)
+              .setInterval(timeInterval)
+              .setAggregation(aggregation)
+              .build();
+      List<Double> timeSeries = listTimeSeriesAsDouble(request);
+
+      if (timeSeries.isEmpty()) {
+        LOG.warn("No monitoring data found. Unable to get elapsed time information.");
+        return null;
+      }
+
+      // getting max since this is a gauge metric
+      return Collections.max(timeSeries);
+    } else {
+      // Otherwise, just return the timeInterval
+      return 0.001
+          * (Timestamps.toMillis(timeInterval.getEndTime())
+              - Timestamps.toMillis(timeInterval.getStartTime()));
     }
-    // getting max since this is a gauge metric
-    return Collections.max(timeSeries);
   }
 
   /**
