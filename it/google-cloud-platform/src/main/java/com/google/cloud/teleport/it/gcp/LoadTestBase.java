@@ -30,7 +30,7 @@ import com.google.cloud.teleport.it.gcp.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.gcp.monitoring.MonitoringClient;
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
+import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -185,6 +185,61 @@ public abstract class LoadTestBase {
     }
   }
 
+  /** Compute metrics of a Dataflow runner job. */
+  private Map<String, Double> computeDataflowMetrics(
+      LaunchInfo launchInfo,
+      @Nullable String inputPcollection,
+      @Nullable String outputPcollection,
+      Map<String, Double> metrics)
+      throws ParseException {
+    // cost info
+    LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
+    double cost = 0;
+    if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
+      cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
+      cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_STREAMING;
+      cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_STREAMING;
+      // Also, add other streaming metrics
+      metrics.putAll(getDataFreshnessMetrics(launchInfo));
+      metrics.putAll(getSystemLatencyMetrics(launchInfo));
+    } else {
+      cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_BATCH;
+      cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_BATCH;
+      cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_BATCH;
+    }
+    cost += metrics.get("TotalPdUsage") / 3600 * PD_PER_GB_HR;
+    cost += metrics.get("TotalSsdUsage") / 3600 * PD_SSD_PER_GB_HR;
+    metrics.put("EstimatedCost", cost);
+    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
+
+    Double dataProcessed = monitoringClient.getDataProcessed(project, launchInfo, inputPcollection);
+    if (dataProcessed != null) {
+      metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
+    }
+    metrics.putAll(getCpuUtilizationMetrics(launchInfo));
+    metrics.putAll(
+        getThroughputMetricsOfPcollection(launchInfo, inputPcollection, outputPcollection));
+
+    return metrics;
+  }
+
+  /** Compute metrics of a Direct runner job. */
+  private Map<String, Double> computeDirectMetrics(
+      LaunchInfo launchInfo,
+      @Nullable String inputPcollection,
+      @Nullable String outputPcollection,
+      Map<String, Double> metrics)
+      throws ParseException {
+    // TODO: determine elapsed time more accurately if Direct runner supports do so.
+    metrics.put(
+        "ElapsedTime",
+        0.001
+            * (System.currentTimeMillis()
+                - Timestamps.toMillis(Timestamps.parse(launchInfo.createTime()))));
+
+    return metrics;
+  }
+
   /**
    * Computes the metrics of the given job using dataflow and monitoring clients.
    *
@@ -211,47 +266,11 @@ public abstract class LoadTestBase {
       Thread.sleep(Duration.ofMinutes(4).toMillis());
     }
     Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
-
-    if (metrics
-        .keySet()
-        .containsAll(
-            ImmutableList.of(
-                "TotalVcpuTime",
-                "TotalMemoryUsage",
-                "TotalShuffleDataProcessed",
-                "TotalPdUsage",
-                "TotalSsdUsage"))) {
-      LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), project);
-      double cost = 0;
-      if (launchInfo.jobType().equals("JOB_TYPE_STREAMING")) {
-        cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_STREAMING;
-        cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_STREAMING;
-        cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_STREAMING;
-        // Also, add other streaming metrics
-        metrics.putAll(getDataFreshnessMetrics(launchInfo));
-        metrics.putAll(getSystemLatencyMetrics(launchInfo));
-      } else {
-        cost += metrics.get("TotalVcpuTime") / 3600 * VCPU_PER_HR_BATCH;
-        cost += (metrics.get("TotalMemoryUsage") / 1000) / 3600 * MEM_PER_GB_HR_BATCH;
-        cost += metrics.get("TotalShuffleDataProcessed") * SHUFFLE_PER_GB_BATCH;
-      }
-      cost += metrics.get("TotalPdUsage") / 3600 * PD_PER_GB_HR;
-      cost += metrics.get("TotalSsdUsage") / 3600 * PD_SSD_PER_GB_HR;
-      metrics.put("EstimatedCost", cost);
-    } else {
-      LOG.info(
-          "Returned metrics does not have all cost metrics needed, skip estimating approximate cost.");
+    if ("DataflowRunner".equalsIgnoreCase(launchInfo.runner())) {
+      metrics = computeDataflowMetrics(launchInfo, inputPcollection, outputPcollection, metrics);
+    } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
+      metrics = computeDirectMetrics(launchInfo, inputPcollection, outputPcollection, metrics);
     }
-
-    metrics.put("ElapsedTime", monitoringClient.getElapsedTime(project, launchInfo));
-
-    Double dataProcessed = monitoringClient.getDataProcessed(project, launchInfo, inputPcollection);
-    if (dataProcessed != null) {
-      metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
-    }
-    metrics.putAll(getCpuUtilizationMetrics(launchInfo));
-    metrics.putAll(
-        getThroughputMetricsOfPcollection(launchInfo, inputPcollection, outputPcollection));
 
     return metrics;
   }

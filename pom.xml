@@ -84,7 +84,6 @@
     <excluded.spanner.tests></excluded.spanner.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
-    <trimStackTrace>false</trimStackTrace>
   </properties>
 
   <dependencyManagement>
