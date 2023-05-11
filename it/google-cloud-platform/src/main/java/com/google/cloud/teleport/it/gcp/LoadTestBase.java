@@ -274,7 +274,7 @@ public abstract class LoadTestBase {
       // metrics
       // instead of hard coding X minutes.
       LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
-      Thread.sleep(Duration.ofMinutes(4).toMillis());
+      // Thread.sleep(Duration.ofMinutes(4).toMillis());
     }
     Map<String, Double> metrics = pipelineLauncher.getMetrics(project, region, launchInfo.jobId());
     if ("DataflowRunner".equalsIgnoreCase(launchInfo.runner())) {
