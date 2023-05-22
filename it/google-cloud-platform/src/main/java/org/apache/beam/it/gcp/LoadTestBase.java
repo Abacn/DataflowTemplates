@@ -48,6 +48,7 @@ import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -105,7 +106,7 @@ public abstract class LoadTestBase {
         protected void starting(Description description) {
           LOG.info(
               "Starting load test {}.{}", description.getClassName(), description.getMethodName());
-          testName = description.getMethodName();
+          // testName = description.getMethodName();
         }
       };
 
@@ -324,8 +325,10 @@ public abstract class LoadTestBase {
       // monitoring metrics take up to 3 minutes to show up
       // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for
       // metrics instead of hard coding X minutes.
-      LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
-      Thread.sleep(Duration.ofMinutes(4).toMillis());
+      if (Strings.isNullOrEmpty(System.getProperty("jobId"))) {
+        LOG.info("Sleeping for 4 minutes to query Dataflow runner metrics.");
+        Thread.sleep(Duration.ofMinutes(4).toMillis());
+      }
       computeDataflowMetrics(metrics, launchInfo, config);
     } else if ("DirectRunner".equalsIgnoreCase(launchInfo.runner())) {
       computeDirectMetrics(metrics, launchInfo);
