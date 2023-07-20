@@ -55,6 +55,8 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractPipelineLauncher.class);
   private static final Pattern CURRENT_METRICS = Pattern.compile(".*Current.*");
+  public static final String LEGACY_RUNNER = "Dataflow Legacy Runner";
+  public static final String RUNNER_V2 = "Dataflow Runner V2";
 
   protected final List<String> launchedJobs = new ArrayList<>();
 
@@ -241,12 +243,12 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
    */
   protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
     Map<String, String> labels = job.getLabels();
-    String runner = "Dataflow Legacy Runner";
+    String runner = LEGACY_RUNNER;
     Environment environment = job.getEnvironment();
     if (environment != null
         && environment.getExperiments() != null
         && environment.getExperiments().contains("use_runner_v2")) {
-      runner = "Dataflow Runner V2";
+      runner = RUNNER_V2;
     }
     LaunchInfo.Builder builder =
         LaunchInfo.builder()

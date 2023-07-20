@@ -24,6 +24,7 @@ import com.google.cloud.teleport.it.common.PipelineOperator;
 import com.google.cloud.teleport.it.common.TestProperties;
 import com.google.cloud.teleport.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
+import com.google.cloud.teleport.it.gcp.dataflow.AbstractPipelineLauncher;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
@@ -159,8 +160,6 @@ public class FileBasedIOLT extends IOLoadTestBase {
 
   @Test
   public void testTextIOWriteThenRead() throws IOException {
-    final String readPCollection = "Counting element.out0";
-    final String writePCollection = "Map records.out0";
 
     TextIO.TypedWrite<String, Object> write =
         TextIO.write()
@@ -181,7 +180,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
         .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
     PipelineLauncher.LaunchConfig writeOptions =
-        PipelineLauncher.LaunchConfig.builder("test-textio-write")
+        PipelineLauncher.LaunchConfig.builder("write-textio")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(writePipeline)
             .addParameter("runner", configuration.runner)
@@ -195,7 +194,7 @@ public class FileBasedIOLT extends IOLoadTestBase {
     assertThatResult(writeResult).isLaunchFinished();
 
     PipelineLauncher.LaunchConfig readOptions =
-        PipelineLauncher.LaunchConfig.builder("test-textio-read")
+        PipelineLauncher.LaunchConfig.builder("read-textio")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(readPipeline)
             .addParameter("runner", configuration.runner)
@@ -217,6 +216,16 @@ public class FileBasedIOLT extends IOLoadTestBase {
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
 
     assertEquals(configuration.numRecords, numRecords, 0.5);
+
+    String readPCollection = "Counting element.out0";
+    String writePCollection = "Map records.out0";
+    // patch: different pcollection name in Dataflow runner v1 and v2
+    if (Objects.equals(readInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
+      readPCollection = "Counting element/ParMultiDo(Counting).out0";
+    }
+    if (Objects.equals(writeInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
+      writePCollection = "Map records/ParMultiDo(MapKVToString).out0";
+    }
 
     // export metrics
     MetricsConfiguration metricsConfig =

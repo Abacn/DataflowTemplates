@@ -28,6 +28,7 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.teleport.it.common.PipelineLauncher;
 import com.google.cloud.teleport.it.common.utils.PipelineUtils;
 import com.google.cloud.teleport.it.gcp.IOLoadTestBase;
+import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -53,7 +54,6 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.util.common.ReflectHelpers;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Iterables;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.ByteStreams;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -387,25 +387,36 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     return getJobInfo(options, state, job);
   }
 
+  /** Additional configs to be added to LaunchInfo. */
   @Override
   protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
     // get intermediate builder from base class method
     LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
+    LaunchInfo parentInfo = builder.build();
     // config pipelineName
     String pipelineName = PipelineUtils.extractJobName(options.jobName());
     String overrideName = null;
-    if (pipelineName.endsWith("write")) {
+    if (pipelineName.startsWith("write")) {
       overrideName = System.getProperty(WRITE_PIPELINE_NAME_OVERWRITE);
-    } else if (pipelineName.endsWith("read")) {
+    } else if (pipelineName.startsWith("read")) {
       overrideName = System.getProperty(READ_PIPELINE_NAME_OVERWRITE);
     }
     if (!Strings.isNullOrEmpty(overrideName)) {
       pipelineName = overrideName;
     }
     builder.setPipelineName(pipelineName);
+    Map<String, String> parameters = new HashMap<>(parentInfo.parameters());
+    parameters.put("runner", parentInfo.runner());
+    parameters.put("jobType", parentInfo.jobType());
+    parameters.put("jobId", parentInfo.jobId());
+    builder.setParameters(ImmutableMap.copyOf(parameters));
     return builder;
   }
 
+  /**
+   * Extract pipeline options from project, region, LaunchConfig, combine with
+   * BeamTestPipelineOptions and returns a full list of options.
+   */
   private List<String> extractOptions(String project, String region, LaunchConfig options) {
     List<String> additionalOptions = new ArrayList<>();
 
