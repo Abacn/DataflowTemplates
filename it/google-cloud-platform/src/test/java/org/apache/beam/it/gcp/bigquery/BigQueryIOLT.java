@@ -45,6 +45,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.IOLoadTestBase;
+import org.apache.beam.it.gcp.dataflow.AbstractPipelineLauncher;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.gcp.bigquery.AvroWriteRequest;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -99,11 +100,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
   private static final String READ_ELEMENT_METRIC_NAME = "read_count";
   private Configuration configuration;
   private String tempLocation;
-
   private TableSchema schema;
-
-  private static final String READ_PCOLLECTION = "Counting element.out0";
-  private static final String WRITE_PCOLLECTION = "Map records.out0";
 
   @Rule public TestPipeline writePipeline = TestPipeline.create();
   @Rule public TestPipeline readPipeline = TestPipeline.create();
@@ -268,7 +265,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
                 .withCustomGcsTempLocation(ValueProvider.StaticValueProvider.of(tempLocation)));
 
     PipelineLauncher.LaunchConfig options =
-        PipelineLauncher.LaunchConfig.builder("test-bigquery-write")
+        PipelineLauncher.LaunchConfig.builder("write-bigquery")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(writePipeline)
             .addParameter("runner", configuration.runner)
@@ -282,9 +279,14 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     // Fail the test if pipeline failed.
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
 
+    // patch: different pcollection name in Dataflow runner v1 and v2
+    String writePcollection = "Map records.out0";
+    if (launchInfo.runner() == AbstractPipelineLauncher.RUNNER_V2) {
+      writePcollection = "Map records/ParMultiDo(MapKVToV).out0";
+    }
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder().setInputPCollection(WRITE_PCOLLECTION).build();
+        MetricsConfiguration.builder().setInputPCollection(writePcollection).build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
@@ -301,7 +303,7 @@ public final class BigQueryIOLT extends IOLoadTestBase {
         .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
     PipelineLauncher.LaunchConfig options =
-        PipelineLauncher.LaunchConfig.builder("test-bigquery-read")
+        PipelineLauncher.LaunchConfig.builder("read-bigquery")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(readPipeline)
             .addParameter("runner", configuration.runner)
@@ -324,9 +326,14 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.numRecords, numRecords, 0.5);
 
+    // patch: different pcollection name in Dataflow runner v1 and v2
+    String readPcollection = "Counting element.out0";
+    if (Objects.equals(launchInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
+      readPcollection = "Counting element/ParMultiDo(Counting).out0";
+    }
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder().setOutputPCollection(READ_PCOLLECTION).build();
+        MetricsConfiguration.builder().setOutputPCollection(readPcollection).build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {

@@ -30,12 +30,14 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.IOLoadTestBase;
+import org.apache.beam.it.gcp.dataflow.AbstractPipelineLauncher;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -115,8 +117,6 @@ public class BigTableIOLT extends IOLoadTestBase {
   /** Run integration test with configurations specified by TestProperties. */
   @Test
   public void testWriteAndRead() throws IOException {
-    final String readPCollection = "Counting element.out0";
-    final String writePCollection = "Map records.out0";
 
     tableId = generateTableId(testName);
     resourceManager.createTable(
@@ -146,6 +146,16 @@ public class BigTableIOLT extends IOLoadTestBase {
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.getNumRows(), numRecords, 0.5);
 
+    String readPCollection = "Counting element.out0";
+    String writePCollection = "Map records.out0";
+    // patch: different pcollection name in Dataflow runner v1 and v2
+    if (Objects.equals(readInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
+      readPCollection = "Counting element/ParMultiDo(Counting).out0";
+    }
+    if (Objects.equals(writeInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
+      writePCollection = "Map records/ParMultiDo(MapToBigTableFormat).out0";
+    }
+
     // export metrics
     MetricsConfiguration metricsConfig =
         MetricsConfiguration.builder()
@@ -174,7 +184,7 @@ public class BigTableIOLT extends IOLoadTestBase {
         .apply("Write to BigTable", writeIO);
 
     PipelineLauncher.LaunchConfig options =
-        PipelineLauncher.LaunchConfig.builder("test-bigtable-write")
+        PipelineLauncher.LaunchConfig.builder("write-bigtable")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(writePipeline)
             .addParameter("runner", configuration.getRunner())
@@ -196,7 +206,7 @@ public class BigTableIOLT extends IOLoadTestBase {
         .apply("Counting element", ParDo.of(new CountingFn<>(READ_ELEMENT_METRIC_NAME)));
 
     PipelineLauncher.LaunchConfig options =
-        PipelineLauncher.LaunchConfig.builder("test-bigtable-read")
+        PipelineLauncher.LaunchConfig.builder("read-bigtable")
             .setSdk(PipelineLauncher.Sdk.JAVA)
             .setPipeline(readPipeline)
             .addParameter("runner", configuration.getRunner())
