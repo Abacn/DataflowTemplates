@@ -268,6 +268,10 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
     // tests
     Map<String, String> parameters = new HashMap<>(options.parameters());
     options.environment().forEach((key, val) -> parameters.put(key, val.toString()));
+    // attach basic job info to parameters so that these are exported for load tests
+    parameters.put("runner", runner);
+    parameters.put("jobType", job.getType());
+    parameters.put("jobId", job.getId());
     builder.setParameters(ImmutableMap.copyOf(parameters));
     if (labels != null && !labels.isEmpty()) {
       // template job

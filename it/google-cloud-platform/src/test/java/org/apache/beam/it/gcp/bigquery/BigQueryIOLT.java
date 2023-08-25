@@ -45,7 +45,6 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.IOLoadTestBase;
-import org.apache.beam.it.gcp.dataflow.AbstractPipelineLauncher;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.gcp.bigquery.AvroWriteRequest;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -279,14 +278,12 @@ public final class BigQueryIOLT extends IOLoadTestBase {
     // Fail the test if pipeline failed.
     assertNotEquals(PipelineOperator.Result.LAUNCH_FAILED, result);
 
-    // patch: different pcollection name in Dataflow runner v1 and v2
-    String writePcollection = "Map records.out0";
-    if (launchInfo.runner() == AbstractPipelineLauncher.RUNNER_V2) {
-      writePcollection = "Map records/ParMultiDo(MapKVToV).out0";
-    }
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder().setInputPCollection(writePcollection).build();
+        MetricsConfiguration.builder()
+            .setInputPCollection("Map records.out0")
+            .setInputPCollectionV2("Map records/ParMultiDo(MapKVToV).out0")
+            .build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {
@@ -326,14 +323,12 @@ public final class BigQueryIOLT extends IOLoadTestBase {
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.numRecords, numRecords, 0.5);
 
-    // patch: different pcollection name in Dataflow runner v1 and v2
-    String readPcollection = "Counting element.out0";
-    if (Objects.equals(launchInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
-      readPcollection = "Counting element/ParMultiDo(Counting).out0";
-    }
     // export metrics
     MetricsConfiguration metricsConfig =
-        MetricsConfiguration.builder().setOutputPCollection(readPcollection).build();
+        MetricsConfiguration.builder()
+            .setOutputPCollection("Counting element.out0")
+            .setOutputPCollectionV2("Counting element/ParMultiDo(Counting).out0")
+            .build();
     try {
       exportMetricsToBigQuery(launchInfo, getMetrics(launchInfo, metricsConfig));
     } catch (ParseException | InterruptedException e) {

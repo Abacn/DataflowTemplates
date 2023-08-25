@@ -397,7 +397,6 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
   protected LaunchInfo.Builder getJobInfoBuilder(LaunchConfig options, JobState state, Job job) {
     // get intermediate builder from base class method
     LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
-    LaunchInfo parentInfo = builder.build();
     // config pipelineName
     String pipelineName = PipelineUtils.extractJobName(options.jobName());
     String overrideName = null;
@@ -410,11 +409,6 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
       pipelineName = overrideName;
     }
     builder.setPipelineName(pipelineName);
-    Map<String, String> parameters = new HashMap<>(parentInfo.parameters());
-    parameters.put("runner", parentInfo.runner());
-    parameters.put("jobType", parentInfo.jobType());
-    parameters.put("jobId", parentInfo.jobId());
-    builder.setParameters(ImmutableMap.copyOf(parameters));
     return builder;
   }
 

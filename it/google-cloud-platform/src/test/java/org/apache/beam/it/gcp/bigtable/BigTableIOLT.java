@@ -30,14 +30,12 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.IOLoadTestBase;
-import org.apache.beam.it.gcp.dataflow.AbstractPipelineLauncher;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -146,21 +144,13 @@ public class BigTableIOLT extends IOLoadTestBase {
             getBeamMetricsName(PipelineMetricsType.COUNTER, READ_ELEMENT_METRIC_NAME));
     assertEquals(configuration.getNumRows(), numRecords, 0.5);
 
-    String readPCollection = "Counting element.out0";
-    String writePCollection = "Map records.out0";
-    // patch: different pcollection name in Dataflow runner v1 and v2
-    if (Objects.equals(readInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
-      readPCollection = "Counting element/ParMultiDo(Counting).out0";
-    }
-    if (Objects.equals(writeInfo.runner(), AbstractPipelineLauncher.RUNNER_V2)) {
-      writePCollection = "Map records/ParMultiDo(MapToBigTableFormat).out0";
-    }
-
     // export metrics
     MetricsConfiguration metricsConfig =
         MetricsConfiguration.builder()
-            .setInputPCollection(writePCollection)
-            .setOutputPCollection(readPCollection)
+            .setInputPCollection("Map records.out0")
+            .setInputPCollectionV2("Map records/ParMultiDo(MapToBigTableFormat).out0")
+            .setOutputPCollection("Counting element.out0")
+            .setOutputPCollectionV2("Counting element/ParMultiDo(Counting).out0")
             .build();
     try {
       exportMetricsToBigQuery(writeInfo, getMetrics(writeInfo, metricsConfig));
