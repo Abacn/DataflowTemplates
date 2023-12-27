@@ -409,10 +409,17 @@ public class DefaultPipelineLauncher extends AbstractPipelineLauncher {
     LaunchInfo.Builder builder = super.getJobInfoBuilder(options, state, job);
     // config pipelineName
     String pipelineName = PipelineUtils.extractJobName(options.jobName());
+
+    Pattern pattern = Pattern.compile("\\d{8}");
+    Matcher matcher = pattern.matcher(pipelineName);
+    if (matcher.find()) {
+      pipelineName = pipelineName.substring(0, matcher.start() - 1);
+    }
+
     String overrideName = null;
-    if (pipelineName.endsWith("write")) {
+    if (pipelineName.startsWith("write")) {
       overrideName = System.getProperty(WRITE_PIPELINE_NAME_OVERWRITE);
-    } else if (pipelineName.endsWith("read")) {
+    } else if (pipelineName.startsWith("read")) {
       overrideName = System.getProperty(READ_PIPELINE_NAME_OVERWRITE);
     }
     if (!Strings.isNullOrEmpty(overrideName)) {
