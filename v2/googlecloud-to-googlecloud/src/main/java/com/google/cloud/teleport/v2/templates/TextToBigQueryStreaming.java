@@ -37,6 +37,9 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -280,14 +283,25 @@ public class TextToBigQueryStreaming {
   public static void main(String[] args) {
     UncaughtExceptionLogger.register();
 
-    // Parse the user options passed from the command-line
-    TextToBigQueryStreamingOptions options =
-        PipelineOptionsFactory.fromArgs(args)
-            .withValidation()
-            .as(TextToBigQueryStreamingOptions.class);
-    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
+    try {
+      // Parse the user options passed from the command-line
+      TextToBigQueryStreamingOptions options =
+          PipelineOptionsFactory.fromArgs(args)
+              .withValidation()
+              .as(TextToBigQueryStreamingOptions.class);
+      BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
-    run(options);
+      run(options);
+    } catch (Throwable e) {
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      e.printStackTrace(pw);
+      String sStackTrace = sw.toString(); // stack trace as a string
+      LOG.warn(sStackTrace);
+      LOG.warn(e.getMessage());
+      LOG.warn(e.toString());
+      throw e;
+    }
   }
 
   /**
