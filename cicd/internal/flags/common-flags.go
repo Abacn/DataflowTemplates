@@ -22,14 +22,30 @@ import (
 )
 
 const (
-	ALL     = "ALL"
+	ALL     = "ALL"     // All modules
+	DEFAULT = "DEFAULT" // Modules other than those excluded
 	SPANNER = "SPANNER"
 )
 
 // Avoid making these vars public.
 var (
 	modulesToBuild string
-	moduleMap      = map[string]string{ALL: "", SPANNER: "v2/datastream-to-spanner/,v2/spanner-change-streams-to-sharded-file-sink/,v2/gcs-to-sourcedb/,v2/sourcedb-to-spanner/,v2/spanner-to-sourcedb/,v2/spanner-custom-shard,plugins/templates-maven-plugin"}
+	moduleMap      = map[string]string{
+		ALL: "",
+		DEFAULT: `!v2/datastream-to-spanner/,
+!v2/spanner-change-streams-to-sharded-file-sink/,
+!v2/gcs-to-sourcedb/,
+!v2/sourcedb-to-spanner/,
+!v2/spanner-to-sourcedb/,
+!v2/spanner-custom-shard`,
+		SPANNER: `v2/datastream-to-spanner/,
+v2/spanner-change-streams-to-sharded-file-sink/,
+v2/gcs-to-sourcedb/,
+v2/sourcedb-to-spanner/,
+v2/spanner-to-sourcedb/,
+v2/spanner-custom-shard,
+plugins/templates-maven-plugin`,
+	}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
