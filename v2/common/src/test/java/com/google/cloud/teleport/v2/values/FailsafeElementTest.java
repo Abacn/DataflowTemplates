@@ -35,18 +35,18 @@ public class FailsafeElementTest {
     assertThat(
         element,
         is(
-            equalTo(
-                FailsafeElement.of("answer", 42)
-                    .setErrorMessage("failed!")
-                    .setStacktrace("com.google..."))));
+            not(
+                equalTo(
+                    FailsafeElement.of("answer", 42)
+                        .setErrorMessage("failed!")
+                        .setStacktrace("com.google...")))));
     assertThat(
         element,
         is(
-            not(
-                equalTo(
-                    FailsafeElement.of("answer", 1)
-                        .setErrorMessage("failed!")
-                        .setStacktrace("com.google...")))));
+            equalTo(
+                FailsafeElement.of("answer", 1)
+                    .setErrorMessage("failed!")
+                    .setStacktrace("com.google..."))));
 
     // Copy
     assertThat(element, is(equalTo(FailsafeElement.of(element))));
