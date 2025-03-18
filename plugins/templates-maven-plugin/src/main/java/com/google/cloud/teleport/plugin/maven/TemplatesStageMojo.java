@@ -508,15 +508,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       }
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       /*
-      stageFlexPythonTemplate(
-          definition,
-          currentTemplateName,
-          buildProjectId,
-          imagePath,
-          metadataFile,
-          containerName,
-          templatePath);
-     */
+       stageFlexPythonTemplate(
+           definition,
+           currentTemplateName,
+           buildProjectId,
+           imagePath,
+           metadataFile,
+           containerName,
+           templatePath);
+      */
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
       /*
       stageFlexYamlTemplate(
@@ -559,7 +559,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
           String content =
               new String(Files.readAllBytes(imageSpecFile.toPath()), StandardCharsets.UTF_8);
+          LOG.info("Source path: " + imageSpecFile.toPath());
+          LOG.info("Source content: " + content);
           String replaced = content.replace(imagePath, imageSpec.getImage());
+          LOG.info("Replacing " + imagePath + " with " + imageSpec.getImage());
+          LOG.info("Replaced: " + replaced);
           // verify we have replaced the image path. Note: the file content may already have the
           // final target image path if it was overwritten before (see "Overriding Flex template
           // spec file ...") above
@@ -569,12 +573,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                     "Unable overwrite %s to %s. Content: %s",
                     imagePath, imageSpec.getImage(), content.substring(0, 1000)));
           }
-          Files.writeString(imageSpecFile.toPath(), content);
+          Files.writeString(imageSpecFile.toPath(), replaced);
         }
       }
     }
 
     if (imageSpecFile != null) {
+      LOG.info("Write to: " + templatePath);
       gcsCopy(imageSpecFile.getAbsolutePath(), templatePath);
     }
 
