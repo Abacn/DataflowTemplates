@@ -507,6 +507,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             imageSpecFile.getName());
       }
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
+      /*
       stageFlexPythonTemplate(
           definition,
           currentTemplateName,
@@ -515,7 +516,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           metadataFile,
           containerName,
           templatePath);
+     */
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
+      /*
       stageFlexYamlTemplate(
           definition,
           currentTemplateName,
@@ -524,6 +527,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           metadataFile,
           containerName,
           templatePath);
+       */
     } else {
       throw new IllegalArgumentException(
           "Type not known: " + definition.getTemplateAnnotation().type());
@@ -531,8 +535,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     if (generateSBOM) {
       // generate SBOM
-      File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(imagePath, buildProjectId, buildDir);
+      // File buildDir = new File(outputClassesDirectory.getAbsolutePath());
+      // performVulnerabilityScanAndGenerateUserSBOM(imagePath, buildProjectId, buildDir);
       GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePath);
       Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
       String digest = runnable.getDigest();
