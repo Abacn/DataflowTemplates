@@ -51,6 +51,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.rmi.RemoteException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -428,6 +429,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String maybeMavenRepo = project.getProperties().getProperty("beam-maven-repo");
     if (!Strings.isNullOrEmpty(maybeMavenRepo)) {
       maybeMavenRepo = maybeMavenRepo.replaceAll("/$", "");
+    } else {
+      // TODO: debug only
+      throw new RuntimeException("beam maven repo is null!");
     }
     this.mavenRepo = maybeMavenRepo;
 
@@ -839,6 +843,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       }
       if (!Strings.isNullOrEmpty(mavenRepo)) {
         dockerfileBuilder.setMavenRepo(mavenRepo);
+      } else {
+        // TODO: check
+        throw new RemoteException("maven repo empty!");
       }
       dockerfileBuilder.build().generate();
     }

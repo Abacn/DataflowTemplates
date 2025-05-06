@@ -134,9 +134,11 @@ public class DockerfileGenerator {
       Files.write(
           Path.of(targetDirectory.getPath() + "/" + containerName + "/Dockerfile"),
           baos.toString(StandardCharsets.UTF_8).getBytes());
+      // TODO: remove debug only
+      throw new RuntimeException("write to " + Path.of(targetDirectory.getPath() + "/" + containerName + "/Dockerfile"));
     } catch (Exception e) {
       LOG.warning("Unable to generate Dockerfile for " + containerName);
-      throw e;
+      // throw e;
     }
   }
 
